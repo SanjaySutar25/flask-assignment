@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Flask + Express Todo App</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 22px; }
+  #status { font-size: 13px; color: #666; margin-bottom: 16px; }
+  li { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  input[type=text] { flex: 1; padding: 6px; }
+  button { padding: 6px 10px; cursor: pointer; }
+  .done { text-decoration: line-through; color: #999; }
+</style>
+</head>
+<body>
+  <h1>Todo App (Express frontend + Flask backend)</h1>
+  <div id="status">Checking backend connection...</div>
+
+  <form id="addForm">
+    <input type="text" id="taskInput" placeholder="New task..." required />
+    <button type="submit">Add</button>
+  </form>
+
+  <ul id="todoList"></ul>
+
+  <script src="/config.js"></script>
+  <script>
+    const API = window.BACKEND_URL + "/api/todos";
+
+    async function checkHealth() {
+      try {
+        const res = await fetch(window.BACKEND_URL + "/api/health");
+        const data = await res.json();
+        document.getElementById("status").textContent =
+          `Connected to backend: ${data.hostname}`;
+      } catch (e) {
+        document.getElementById("status").textContent =
+          "Could not reach backend at " + window.BACKEND_URL;
+      }
+    }
+
+    async function loadTodos() {
+      const res = await fetch(API);
+      const todos = await res.json();
+      const list = document.getElementById("todoList");
+      list.innerHTML = "";
+      todos.forEach(t => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <input type="checkbox" ${t.done ? "checked" : ""} data-id="${t.id}" />
+          <span class="${t.done ? "done" : ""}">${t.task}</span>
+          <button data-del="${t.id}">x</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("addForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("taskInput");
+      await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task: input.value })
+      });
+      input.value = "";
+      loadTodos();
+    });
+
+    document.getElementById("todoList").addEventListener("click", async (e) => {
+      if (e.target.dataset.del) {
+        await fetch(`${API}/${e.target.dataset.del}`, { method: "DELETE" });
+        loadTodos();
+      }
+    });
+
+    document.getElementById("todoList").addEventListener("change", async (e) => {
+      if (e.target.type === "checkbox") {
+        await fetch(`${API}/${e.target.dataset.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ done: e.target.checked })
+        });
+        loadTodos();
+      }
+    });
+
+    checkHealth();
+    loadTodos();
+  </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: flask-backend
+    ports:
+      - "5000:5000"
+    networks:
+      - app-net
+
+  frontend:
+    build: ./frontend
+    container_name: express-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # NOTE: the browser (not the Express server) calls this URL directly,
+      # so it must be reachable from your host machine, not just inside the
+      # Docker network. That's why this is localhost:5000, not http://backend:5000.
+      - BACKEND_URL=http://localhost:5000
+    depends_on:
+      - backend
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
